@@ -1,10 +1,4 @@
-import React, {
-  PropsWithChildren,
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { Device } from "react-native-ble-plx";
 import { bleManager } from "./bleManager";
 
@@ -15,9 +9,6 @@ export type DevicesContext = {
   addConnectedDevice: (device: Device) => void;
 };
 
-/**
- * Context for the token of a project.
- */
 export const DevicesContext = createContext<DevicesContext>({
   devices: [],
   connectedDevices: [],
@@ -91,11 +82,6 @@ function useScanDevices() {
   return devices;
 }
 
-/**
- * Provides the token for a project.
- *
- * @note depends on JBContractContext
- */
 export const DevicesProvider = ({
   children,
 }: {

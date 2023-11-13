@@ -89,7 +89,7 @@ const renderItem = ({ item }: { item: DeviceRenderItem }) => {
 };
 
 const DeviceList = () => {
-  const { devices, connectedDevices } = useDevices();
+  const { devices } = useDevices();
   const deviceStrengths = devices.map((d) => {
     return {
       id: d.id,
@@ -99,8 +99,6 @@ const DeviceList = () => {
       isConnectable: d.isConnectable,
     };
   });
-
-  console.log(JSON.stringify(deviceStrengths));
 
   return (
     <FlatList
@@ -126,6 +124,9 @@ const DeviceView = () => {
         <View style={styles.item}>
           <Text style={styles.title}>{localName ?? name ?? id}</Text>
           <Text style={styles.itemMetadata}>{rssi}</Text>
+          {rssi && rssi < -80 && (
+            <Text style={{ color: "red" }}>Bro come back!</Text>
+          )}
         </View>
       ) : (
         <DeviceList />
