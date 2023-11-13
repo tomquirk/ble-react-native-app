@@ -9,13 +9,14 @@ import {
   Text,
   View,
 } from "react-native";
+import { Device } from "react-native-ble-plx";
 import { BleManager } from "react-native-ble-plx";
 
-// type DeviceRenderItem = {
-//   name: string | null;
-//   id: string | null;
-//   rssi: number | null;
-// };
+type DeviceRenderItem = {
+  name: string | null;
+  id: string | null;
+  rssi: number | null;
+};
 
 const bleManager = new BleManager();
 
@@ -50,7 +51,7 @@ const requestPermissions = async () => {
 };
 
 function useDevices() {
-  const [devices, setDevices] = useState([]);
+  const [devices, setDevices] = useState<Device[]>([]);
 
   useEffect(() => {
     bleManager.startDeviceScan(null, null, (error, device) => {
@@ -87,7 +88,7 @@ function useDevices() {
   return devices;
 }
 
-const Item = ({ item }) => {
+const Item = ({ item }: { item: DeviceRenderItem }) => {
   const { name, id, rssi } = item;
   return (
     <Pressable
@@ -119,7 +120,7 @@ const Item = ({ item }) => {
   );
 };
 
-const renderItem = ({ item }) => {
+const renderItem = ({ item }: { item: DeviceRenderItem }) => {
   return <Item item={item} />;
 };
 
@@ -135,7 +136,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    bleManager.onStateChange((state) => {
+    bleManager?.onStateChange((state) => {
       console.log("bleManager::state change", state);
     }, true);
   }, []);
