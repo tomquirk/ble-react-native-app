@@ -2,44 +2,45 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
   Button,
+  FlatList,
   PermissionsAndroid,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { BleManager } from "react-native-ble-plx";
 
-const requestCameraPermission = async () => {
+// type DeviceRenderItem = {
+//   name: string | null;
+//   id: string | null;
+//   rssi: number | null;
+// };
+
+const bleManager = new BleManager();
+
+const requestPermissions = async () => {
+  const permissions = [
+    PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+    PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+    PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE,
+  ];
   try {
-    const grantedA = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-      {
-        title: "Cool Photo App Camera Permission",
-        message:
-          "Cool Photo App needs access to your camera " +
-          "so you can take awesome pictures.",
-        buttonNeutral: "Ask Me Later",
-        buttonNegative: "Cancel",
-        buttonPositive: "OK",
-      }
+    // todo change to requestMultiple
+    const req = await Promise.all(
+      permissions.map((p) => {
+        return PermissionsAndroid.request(p);
+      })
     );
-    const grantedB = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      {
-        title: "Cool Photo App Camera Permission",
-        message:
-          "Cool Photo App needs access to your camera " +
-          "so you can take awesome pictures.",
-        buttonNeutral: "Ask Me Later",
-        buttonNegative: "Cancel",
-        buttonPositive: "OK",
-      }
+
+    const missingGrants = req.some(
+      (r) => r !== PermissionsAndroid.RESULTS.GRANTED
     );
-    if (
-      grantedA === PermissionsAndroid.RESULTS.GRANTED &&
-      grantedB === PermissionsAndroid.RESULTS.GRANTED
-    ) {
-      console.log("You can use the camera");
+
+    if (!missingGrants) {
+      console.log("All permissions are granted");
     } else {
       console.log("Camera permission denied");
     }
@@ -50,14 +51,23 @@ const requestCameraPermission = async () => {
 
 function useDevices() {
   const [devices, setDevices] = useState([]);
-  const bleManager = new BleManager();
 
   useEffect(() => {
     bleManager.startDeviceScan(null, null, (error, device) => {
       if (device) {
         // Add the device if it's not already in the array
         setDevices((prevDevices) => {
-          if (!prevDevices.some((device) => device.id === device.id)) {
+          const prevDevice = prevDevices.some(
+            (prevDevice) => prevDevice.id === device.id
+          );
+
+          // const rssiChanged = prevDevice && prevDevice.rssi !== device.rssi;
+          // if (rssiChanged) {
+          //   // filter out the old device and add the new one
+          //   return [...prevDevices.filter(d => d.id !== device.id), device];
+          // }
+
+          if (!prevDevice) {
             return [...prevDevices, device];
           }
           return prevDevices;
@@ -65,27 +75,85 @@ function useDevices() {
       }
 
       if (error) {
-        console.error("ble error====>", JSON.stringify(error));
+        console.error("bleManager::error::", JSON.stringify(error));
       }
     });
 
     return () => {
-      bleManager.stopDeviceScan();
+      bleManager?.stopDeviceScan();
     };
-  }, [bleManager]);
+  }, []);
 
   return devices;
 }
 
+const Item = ({ item }) => {
+  const { name, id, rssi } = item;
+  return (
+    <Pressable
+      onPress={() => {
+        console.log("pressed...");
+        // const bleManager = new BleManager();
+        if (!id) {
+          return;
+        }
+
+        bleManager.connectToDevice(id).then((device) => {
+          console.log("connected??", id);
+        });
+      }}
+      style={({ pressed }) => [
+        {
+          backgroundColor: pressed ? "rgb(210, 230, 255)" : "white",
+        },
+        styles.item,
+      ]}
+    >
+      {({ pressed }) => (
+        <>
+          <Text style={styles.title}>{name ?? id}</Text>
+          <Text style={styles.itemMetadata}>{rssi}</Text>
+        </>
+      )}
+    </Pressable>
+  );
+};
+
+const renderItem = ({ item }) => {
+  return <Item item={item} />;
+};
+
 export default function App() {
   const devices = useDevices();
-  console.log(JSON.stringify(devices))
+  const deviceStrengths = devices.map((d) => {
+    return {
+      id: d.id,
+      name: d.name,
+      rssi: d.rssi,
+      isConnectable: d.isConnectable,
+    };
+  });
+
+  useEffect(() => {
+    bleManager.onStateChange((state) => {
+      console.log("bleManager::state change", state);
+    }, true);
+  }, []);
+
+  console.log(JSON.stringify(deviceStrengths));
+
   return (
     <View style={styles.container}>
       <Text>BLE baby</Text>
-      <Button title="request permissions" onPress={requestCameraPermission} />
+      <Button title="request permissions" onPress={requestPermissions} />
       <StatusBar style="auto" />
-      <Text>Devices:{devices.map((d) => d.name)}</Text>
+
+      <Text>Devices</Text>
+      <FlatList
+        data={deviceStrengths}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+      />
     </View>
   );
 }
@@ -96,5 +164,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+    height: "100%",
+  },
+  item: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    gap: 20,
+  },
+  title: {
+    fontSize: 24,
+  },
+  itemMetadata: {
+    fontSize: 18,
+    color: "gray",
   },
 });
